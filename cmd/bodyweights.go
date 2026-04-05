@@ -45,8 +45,7 @@ var bodyweightsListCmd = &cobra.Command{
 			return nil
 		}
 
-		for i := len(entries) - 1; i >= 0; i-- {
-			entry := entries[i]
+		for _, entry := range entries {
 			fmt.Printf("%s  %s lbs\n", entry.date.Format("2006-01-02"), formatWeight(entry.weight))
 		}
 		return nil
@@ -167,15 +166,16 @@ func printBodyweightStats(entries []bodyweightEntry) {
 		for _, month := range tail {
 			variance += (month.avg - mean) * (month.avg - mean)
 		}
-		stddev := math.Sqrt(variance / float64(len(tail)))
+		stddev := math.Sqrt(variance / float64(len(tail)-1))
 		if stddev < 2.0 {
 			fmt.Printf("  Plateau: %s - present (%s lbs avg, %.1f stddev)\n", monthNameFromKey(tail[0].month), formatWeight(mean), stddev)
 		}
 	}
 
 	fmt.Println()
+	chartMin := minWeight - 10
 	for _, month := range monthAvgs {
-		barLen := scaledBarLength(month.avg, minWeight, maxWeight, 40)
+		barLen := scaledBarLength(month.avg, chartMin, maxWeight, 40)
 		fmt.Printf("  %s  %4s %s\n", month.month, formatWeight(month.avg), strings.Repeat("█", barLen))
 	}
 }
