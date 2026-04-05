@@ -8,19 +8,22 @@ Download the latest release for your platform from the [releases page](https://g
 
 **macOS (Apple Silicon):**
 ```sh
-curl -L https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_darwin_arm64.zip | unzip -d ~/bin -
+curl -Lo /tmp/liftoff.zip https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_darwin_arm64.zip
+unzip -jo /tmp/liftoff.zip -d ~/bin && rm /tmp/liftoff.zip
 chmod +x ~/bin/liftoff
 ```
 
 **macOS (Intel):**
 ```sh
-curl -L https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_darwin_amd64.zip | unzip -d ~/bin -
+curl -Lo /tmp/liftoff.zip https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_darwin_amd64.zip
+unzip -jo /tmp/liftoff.zip -d ~/bin && rm /tmp/liftoff.zip
 chmod +x ~/bin/liftoff
 ```
 
 **Linux (amd64):**
 ```sh
-curl -L https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_linux_amd64.zip | unzip -d ~/bin -
+curl -Lo /tmp/liftoff.zip https://github.com/DTTerastar/liftoff-cli/releases/latest/download/liftoff_linux_amd64.zip
+unzip -jo /tmp/liftoff.zip -d ~/bin && rm /tmp/liftoff.zip
 chmod +x ~/bin/liftoff
 ```
 
