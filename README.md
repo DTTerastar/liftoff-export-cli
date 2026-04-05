@@ -34,35 +34,42 @@ export PATH="$HOME/bin:$PATH"
 
 ## Usage
 
-**Log in:**
+### Auth
+
 ```sh
-liftoff auth login
+liftoff auth login      # Log in to Liftoff
+liftoff auth logout     # Remove stored auth tokens
+liftoff auth refresh    # Manually refresh the access token
 ```
 
-**List workouts (fitdown format):**
+### Workouts
+
 ```sh
-liftoff workouts list
+liftoff workouts list                       # List workouts in fitdown format
+liftoff workouts list --json                # Output as JSON
+liftoff workouts list --since 30d           # Filter by relative date (30d, 4w, 6m, 1y)
+liftoff workouts list --since 2025-01-01    # Filter by absolute date
+liftoff workouts list --exercise bench      # Filter to matching exercises
+liftoff workouts show <id>                  # Show a single workout
 ```
 
-**Filter by date:**
+### Workout Stats
+
 ```sh
-liftoff workouts list --since 30d
-liftoff workouts list --since 2025-01-01
+liftoff workouts stats                      # Per-exercise summaries with monthly graphs
+liftoff workouts stats --detail             # Per-session breakdown
+liftoff workouts stats --exercise curl      # Filter to matching exercises
+liftoff workouts stats --since 6m           # Filter by date
+liftoff workouts stats --json               # Output as JSON
 ```
 
-**Output as JSON:**
-```sh
-liftoff workouts list --json
-```
+### Bodyweights
 
-**Show a single workout:**
 ```sh
-liftoff workouts show <id>
-```
-
-**Log out:**
-```sh
-liftoff auth logout
+liftoff bodyweights list                    # List recorded bodyweights
+liftoff bodyweights list --since 6m         # Filter by date
+liftoff bodyweights stats                   # Stats with monthly graph and trends
+liftoff bodyweights stats --since 2025-01-01
 ```
 
 ## Output Format
