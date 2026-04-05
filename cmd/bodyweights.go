@@ -176,7 +176,7 @@ func printBodyweightStats(entries []bodyweightEntry) {
 	chartMin := minWeight - 10
 	for _, month := range monthAvgs {
 		barLen := scaledBarLength(month.avg, chartMin, maxWeight, 40)
-		fmt.Printf("  %s  %4s %s\n", month.month, formatWeight(month.avg), strings.Repeat("█", barLen))
+		fmt.Printf("  %s  %5s %s\n", month.month, formatWeight(month.avg), strings.Repeat("█", barLen))
 	}
 }
 
