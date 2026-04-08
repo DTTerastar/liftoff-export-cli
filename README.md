@@ -1,10 +1,43 @@
 # liftoff-export-cli
 
-A command-line interface for the [Liftoff](https://getgymbros.com) fitness app.
+Export and analyze your workout data from the [Liftoff](https://getgymbros.com) fitness app. A command-line tool to back up gym sessions, track bodyweight trends, and view exercise statistics — all from your terminal.
+
+[![Latest Release](https://img.shields.io/github/v/release/DTTerastar/liftoff-export-cli)](https://github.com/DTTerastar/liftoff-export-cli/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/DTTerastar/liftoff-export-cli)](go.mod)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+
+## Features
+
+- **Workout export** — list, search, and display workouts in [fitdown](https://github.com/datavis-tech/fitdown) or JSON format
+- **Exercise filtering** — filter by exercise name with word-prefix matching (e.g. `--exercise bench`)
+- **Date filtering** — relative (`30d`, `4w`, `6m`, `1y`) or absolute (`2025-01-01`)
+- **Exercise statistics** — per-exercise PR tracking, volume summaries, and monthly progress bar charts
+- **Bodyweight tracking** — trend analysis with ASCII charts, plateau detection, and rate-of-change
+- **Multi-platform** — pre-built binaries for macOS (Intel + Apple Silicon), Linux, and Windows
+- **JSON output** — pipe workout data to jq, scripts, or other tools with `--json`
+
+## Quick Start
+
+```sh
+# Install with Homebrew
+brew tap DTTerastar/tap
+brew install liftoff-export
+
+# Log in and list recent workouts
+liftoff-export auth login
+liftoff-export workouts list --since 7d
+```
 
 ## Install
 
-Download the latest release for your platform from the [releases page](https://github.com/DTTerastar/liftoff-export-cli/releases/latest), unzip it, and place the binary in `~/bin`.
+**Homebrew (macOS / Linux):**
+```sh
+brew tap DTTerastar/tap
+brew install liftoff-export
+```
+
+Or download a pre-built binary from the [releases page](https://github.com/DTTerastar/liftoff-export-cli/releases/latest):
 
 **macOS (Apple Silicon):**
 ```sh
@@ -26,6 +59,10 @@ curl -Lo /tmp/liftoff-export.zip https://github.com/DTTerastar/liftoff-export-cl
 unzip -jo /tmp/liftoff-export.zip -d ~/bin && rm /tmp/liftoff-export.zip
 chmod +x ~/bin/liftoff-export
 ```
+
+**Windows (amd64):**
+
+Download `liftoff-export_windows_amd64.zip` from the [releases page](https://github.com/DTTerastar/liftoff-export-cli/releases/latest), extract it, and add the directory to your PATH.
 
 Make sure `~/bin` is in your `PATH`. If not, add this to your `~/.zshrc` or `~/.bashrc`:
 ```sh
@@ -94,3 +131,7 @@ Scapular Pull Ups
 Walking
 1.00mi 18:00
 ```
+
+## About Liftoff
+
+[Liftoff](https://getgymbros.com) is a fitness tracking app for logging gym workouts, bodyweight, and exercise progress. This CLI is an unofficial tool for exporting and analyzing your own data.
