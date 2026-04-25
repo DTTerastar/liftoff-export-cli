@@ -245,6 +245,13 @@ func load() (*TokenStore, error) {
 	return &store, json.Unmarshal(data, &store)
 }
 
+// Load reads the saved token store without attempting a refresh. Returns
+// (nil, error) when no token has been saved yet. Suitable for non-mutating
+// status checks; use GetToken when an action needs a usable access token.
+func Load() (*TokenStore, error) {
+	return load()
+}
+
 // parseBearer extracts "Bearer <token>" from an Authorization header value.
 func parseBearer(header string) string {
 	if strings.HasPrefix(header, "Bearer ") {
