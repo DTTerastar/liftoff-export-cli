@@ -13,6 +13,7 @@ import (
 
 var (
 	statsSinceFlag    string
+	statsUntilFlag    string
 	statsExerciseFlag string
 	statsJSONFlag     bool
 	statsDetailFlag   bool
@@ -47,20 +48,15 @@ var statsCmd = &cobra.Command{
 		if err := c.Query("post.getMyPosts", nil, &posts); err != nil {
 			return err
 		}
-		if statsSinceFlag != "" {
-			since, err := parseSince(statsSinceFlag)
-			if err != nil {
-				return err
-			}
-			var filtered []Post
-			for _, p := range posts {
-				t, err := time.Parse(time.RFC3339Nano, p.StartedAt)
-				if err != nil || !t.Before(since) {
-					filtered = append(filtered, p)
-				}
-			}
-			posts = filtered
+		since, err := parseDateValue(statsSinceFlag)
+		if err != nil {
+			return err
 		}
+		until, err := parseUntilValue(statsUntilFlag)
+		if err != nil {
+			return err
+		}
+		posts = filterByWindow(posts, since, until)
 		if statsExerciseFlag != "" {
 			posts = filterExercises(posts, statsExerciseFlag)
 		}
@@ -89,7 +85,8 @@ var statsCmd = &cobra.Command{
 
 func init() {
 	workoutsCmd.AddCommand(statsCmd)
-	statsCmd.Flags().StringVar(&statsSinceFlag, "since", "", "Filter workouts on or after date (e.g. 2025-01-01, 30d, 4w, 6m, 1y)")
+	statsCmd.Flags().StringVar(&statsSinceFlag, "since", "", "Filter workouts on or after date (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	statsCmd.Flags().StringVar(&statsUntilFlag, "until", "", "Filter workouts through date, inclusive (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
 	statsCmd.Flags().StringVar(&statsExerciseFlag, "exercise", "", "Filter to exercises matching this name (word-prefix match)")
 	statsCmd.Flags().BoolVar(&statsJSONFlag, "json", false, "Output as JSON")
 	statsCmd.Flags().BoolVar(&statsDetailFlag, "detail", false, "Show per-session breakdown")

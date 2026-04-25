@@ -49,6 +49,7 @@ type Post struct {
 
 var listJSONFlag bool
 var listSinceFlag string
+var listUntilFlag string
 var listExerciseFlag string
 
 var listCmd = &cobra.Command{
@@ -61,20 +62,15 @@ var listCmd = &cobra.Command{
 		if err := c.Query("post.getMyPosts", nil, &posts); err != nil {
 			return err
 		}
-		if listSinceFlag != "" {
-			since, err := parseSince(listSinceFlag)
-			if err != nil {
-				return err
-			}
-			var filtered []Post
-			for _, p := range posts {
-				t, err := time.Parse(time.RFC3339Nano, p.StartedAt)
-				if err != nil || !t.Before(since) {
-					filtered = append(filtered, p)
-				}
-			}
-			posts = filtered
+		since, err := parseDateValue(listSinceFlag)
+		if err != nil {
+			return err
 		}
+		until, err := parseUntilValue(listUntilFlag)
+		if err != nil {
+			return err
+		}
+		posts = filterByWindow(posts, since, until)
 		if listExerciseFlag != "" {
 			posts = filterExercises(posts, listExerciseFlag)
 		}
@@ -85,32 +81,82 @@ var listCmd = &cobra.Command{
 	},
 }
 
-func parseSince(s string) (time.Time, error) {
-	// Try absolute date first
+// parseDateValue parses --since / --until / show argument values.
+// Accepted forms: "today", "yesterday", absolute YYYY-MM-DD, or relative
+// Nd/Nw/Nm/Ny. Returns local midnight for the target day; empty string
+// yields the zero time.
+func parseDateValue(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+	switch strings.ToLower(s) {
+	case "today":
+		return today, nil
+	case "yesterday":
+		return today.AddDate(0, 0, -1), nil
+	}
 	if t, err := time.ParseInLocation("2006-01-02", s, time.Local); err == nil {
 		return t, nil
 	}
-	// Try relative: e.g. 30d, 4w, 6m, 1y
 	if len(s) < 2 {
-		return time.Time{}, fmt.Errorf("invalid --since value: %q", s)
+		return time.Time{}, fmt.Errorf("invalid date %q (use YYYY-MM-DD, today, yesterday, or Nd/Nw/Nm/Ny)", s)
 	}
 	n := 0
 	if _, err := fmt.Sscanf(s[:len(s)-1], "%d", &n); err != nil {
-		return time.Time{}, fmt.Errorf("invalid --since value: %q", s)
+		return time.Time{}, fmt.Errorf("invalid date %q (use YYYY-MM-DD, today, yesterday, or Nd/Nw/Nm/Ny)", s)
 	}
-	now := time.Now()
 	switch s[len(s)-1] {
 	case 'd':
-		return now.AddDate(0, 0, -n), nil
+		return today.AddDate(0, 0, -n), nil
 	case 'w':
-		return now.AddDate(0, 0, -n*7), nil
+		return today.AddDate(0, 0, -n*7), nil
 	case 'm':
-		return now.AddDate(0, -n, 0), nil
+		return today.AddDate(0, -n, 0), nil
 	case 'y':
-		return now.AddDate(-n, 0, 0), nil
+		return today.AddDate(-n, 0, 0), nil
 	default:
-		return time.Time{}, fmt.Errorf("invalid --since unit %q: use d, w, m, or y", string(s[len(s)-1]))
+		return time.Time{}, fmt.Errorf("invalid date unit %q: use d, w, m, or y", string(s[len(s)-1]))
 	}
+}
+
+// parseUntilValue resolves --until to the exclusive upper bound of a half-open
+// window. The user-supplied date names a calendar day they expect to be
+// included, so we add 24h to the parsed start-of-day. Empty string yields the
+// zero time, which callers treat as "no upper bound".
+func parseUntilValue(s string) (time.Time, error) {
+	t, err := parseDateValue(s)
+	if err != nil || t.IsZero() {
+		return t, err
+	}
+	return t.AddDate(0, 0, 1), nil
+}
+
+// filterByWindow keeps posts with StartedAt in [since, until). Either bound
+// being zero disables that side. RFC3339Nano parse failures are kept (the
+// user can decide what to do with malformed timestamps downstream).
+func filterByWindow(posts []Post, since, until time.Time) []Post {
+	if since.IsZero() && until.IsZero() {
+		return posts
+	}
+	out := posts[:0]
+	for _, p := range posts {
+		t, err := time.Parse(time.RFC3339Nano, p.StartedAt)
+		if err != nil {
+			out = append(out, p)
+			continue
+		}
+		if !since.IsZero() && t.Before(since) {
+			continue
+		}
+		if !until.IsZero() && !t.Before(until) {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 var showJSONFlag bool
@@ -120,9 +166,12 @@ var showCmd = &cobra.Command{
 	Short: "Show workout(s) for a given date (e.g. 2025-03-08, today, yesterday)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		target, err := parseDate(args[0])
+		target, err := parseDateValue(args[0])
 		if err != nil {
 			return err
+		}
+		if target.IsZero() {
+			return fmt.Errorf("date argument is required")
 		}
 
 		c := client.New()
@@ -154,26 +203,13 @@ var showCmd = &cobra.Command{
 	},
 }
 
-func parseDate(s string) (time.Time, error) {
-	now := time.Now()
-	switch strings.ToLower(s) {
-	case "today":
-		return now, nil
-	case "yesterday":
-		return now.AddDate(0, 0, -1), nil
-	}
-	if t, err := time.ParseInLocation("2006-01-02", s, time.Local); err == nil {
-		return t, nil
-	}
-	return time.Time{}, fmt.Errorf("invalid date: %q (use YYYY-MM-DD, today, or yesterday)", s)
-}
-
 func init() {
 	workoutsCmd.AddCommand(listCmd)
 	workoutsCmd.AddCommand(showCmd)
 	showCmd.Flags().BoolVar(&showJSONFlag, "json", false, "Output as JSON")
 	listCmd.Flags().BoolVar(&listJSONFlag, "json", false, "Output as JSON instead of fitdown")
-	listCmd.Flags().StringVar(&listSinceFlag, "since", "", "Filter workouts on or after date (e.g. 2025-01-01, 30d, 4w, 6m, 1y)")
+	listCmd.Flags().StringVar(&listSinceFlag, "since", "", "Filter workouts on or after date (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	listCmd.Flags().StringVar(&listUntilFlag, "until", "", "Filter workouts through date, inclusive (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
 	listCmd.Flags().StringVar(&listExerciseFlag, "exercise", "", "Filter to exercises matching this name (word-prefix match)")
 }
 

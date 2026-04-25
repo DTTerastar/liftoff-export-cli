@@ -24,7 +24,9 @@ type monthAvg struct {
 
 var (
 	bodyweightsListSinceFlag  string
+	bodyweightsListUntilFlag  string
 	bodyweightsStatsSinceFlag string
+	bodyweightsStatsUntilFlag string
 )
 
 var bodyweightsCmd = &cobra.Command{
@@ -36,7 +38,7 @@ var bodyweightsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List recorded bodyweights",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		entries, err := loadBodyweightEntries(bodyweightsListSinceFlag)
+		entries, err := loadBodyweightEntries(bodyweightsListSinceFlag, bodyweightsListUntilFlag)
 		if err != nil {
 			return err
 		}
@@ -56,7 +58,7 @@ var bodyweightsStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Show bodyweight statistics",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		entries, err := loadBodyweightEntries(bodyweightsStatsSinceFlag)
+		entries, err := loadBodyweightEntries(bodyweightsStatsSinceFlag, bodyweightsStatsUntilFlag)
 		if err != nil {
 			return err
 		}
@@ -74,24 +76,26 @@ func init() {
 	bodyweightsCmd.AddCommand(bodyweightsListCmd)
 	bodyweightsCmd.AddCommand(bodyweightsStatsCmd)
 
-	bodyweightsListCmd.Flags().StringVar(&bodyweightsListSinceFlag, "since", "", "Filter entries on or after date (e.g. 2025-01-01, 30d, 4w, 6m, 1y)")
-	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsSinceFlag, "since", "", "Filter entries on or after date (e.g. 2025-01-01, 30d, 4w, 6m, 1y)")
+	bodyweightsListCmd.Flags().StringVar(&bodyweightsListSinceFlag, "since", "", "Filter entries on or after date (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	bodyweightsListCmd.Flags().StringVar(&bodyweightsListUntilFlag, "until", "", "Filter entries through date, inclusive (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsSinceFlag, "since", "", "Filter entries on or after date (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsUntilFlag, "until", "", "Filter entries through date, inclusive (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
 }
 
-func loadBodyweightEntries(sinceFlag string) ([]bodyweightEntry, error) {
+func loadBodyweightEntries(sinceFlag, untilFlag string) ([]bodyweightEntry, error) {
 	c := client.New()
 	var posts []Post
 	if err := c.Query("post.getMyPosts", nil, &posts); err != nil {
 		return nil, err
 	}
 
-	var since time.Time
-	if sinceFlag != "" {
-		parsed, err := parseSince(sinceFlag)
-		if err != nil {
-			return nil, err
-		}
-		since = parsed
+	since, err := parseDateValue(sinceFlag)
+	if err != nil {
+		return nil, err
+	}
+	until, err := parseUntilValue(untilFlag)
+	if err != nil {
+		return nil, err
 	}
 
 	entries := make([]bodyweightEntry, 0, len(posts))
@@ -107,6 +111,9 @@ func loadBodyweightEntries(sinceFlag string) ([]bodyweightEntry, error) {
 		}
 		date = date.Local()
 		if !since.IsZero() && date.Before(since) {
+			continue
+		}
+		if !until.IsZero() && !date.Before(until) {
 			continue
 		}
 
