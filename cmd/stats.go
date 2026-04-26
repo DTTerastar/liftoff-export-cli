@@ -220,8 +220,8 @@ func printWeightSummary(sessions []SessionStats) {
 	recent := sessions[len(sessions)-1]
 
 	prDate, _ := time.Parse("2006-01-02", pr.Date)
-	fmt.Printf("  PR:     %.0fx%d (%s)\n", pr.BestWeight, pr.BestReps, prDate.Format("Jan 2006"))
-	fmt.Printf("  Recent: %.0fx%d\n", recent.BestWeight, recent.BestReps)
+	fmt.Printf("  PR:     %sx%d (%s)\n", formatWeight(pr.BestWeight), pr.BestReps, prDate.Format("Jan 2006"))
+	fmt.Printf("  Recent: %sx%d\n", formatWeight(recent.BestWeight), recent.BestReps)
 }
 
 func printDurationSummary(sessions []SessionStats) {
@@ -335,7 +335,7 @@ func printSummariesTextDetail(summaries []ExerciseSummary) {
 		for _, ss := range ex.Sessions {
 			fmt.Printf("  %s  BW=%.0f  %d sets  %d reps", ss.Date, ss.Bodyweight, ss.Sets, ss.Reps)
 			if ss.BestWeight > 0 {
-				fmt.Printf("  %.0fx%d", ss.BestWeight, ss.BestReps)
+				fmt.Printf("  %sx%d", formatWeight(ss.BestWeight), ss.BestReps)
 			}
 			if ss.Volume > 0 {
 				fmt.Printf("  vol=%.0f", ss.Volume)
