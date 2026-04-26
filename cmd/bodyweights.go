@@ -23,11 +23,12 @@ type monthAvg struct {
 }
 
 var (
-	bodyweightsListSinceFlag  string
-	bodyweightsListUntilFlag  string
-	bodyweightsListFormatFlag string
-	bodyweightsStatsSinceFlag string
-	bodyweightsStatsUntilFlag string
+	bodyweightsListSinceFlag   string
+	bodyweightsListUntilFlag   string
+	bodyweightsListFormatFlag  string
+	bodyweightsStatsSinceFlag  string
+	bodyweightsStatsUntilFlag  string
+	bodyweightsStatsFormatFlag string
 )
 
 var bodyweightsCmd = &cobra.Command{
@@ -40,6 +41,27 @@ var bodyweightsCmd = &cobra.Command{
 type bodyweightJSON struct {
 	Date   string  `json:"date"`
 	Weight float64 `json:"weight"`
+}
+
+type bodyweightStatsJSON struct {
+	Current      float64          `json:"current"`
+	High         float64          `json:"high"`
+	Low          float64          `json:"low"`
+	Change       float64          `json:"change"`
+	RatePerMonth *float64         `json:"ratePerMonth,omitempty"`
+	Plateau      *plateauJSON     `json:"plateau,omitempty"`
+	Months       []monthAvgJSON   `json:"months"`
+}
+
+type plateauJSON struct {
+	Since  string  `json:"since"`
+	Avg    float64 `json:"avg"`
+	Stddev float64 `json:"stddev"`
+}
+
+type monthAvgJSON struct {
+	Month string  `json:"month"`
+	Avg   float64 `json:"avg"`
 }
 
 var bodyweightsListCmd = &cobra.Command{
@@ -80,15 +102,24 @@ var bodyweightsStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Show bodyweight statistics",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		format, err := validateFormat(bodyweightsStatsFormatFlag)
+		if err != nil {
+			return err
+		}
 		entries, err := loadBodyweightEntries(bodyweightsStatsSinceFlag, bodyweightsStatsUntilFlag)
 		if err != nil {
 			return err
 		}
 		if len(entries) == 0 {
+			if format == "json" {
+				return printJSON(bodyweightStatsJSON{Months: []monthAvgJSON{}})
+			}
 			fmt.Println("No bodyweights found.")
 			return nil
 		}
-
+		if format == "json" {
+			return printJSON(buildBodyweightStatsJSON(entries))
+		}
 		printBodyweightStats(entries)
 		return nil
 	},
@@ -103,6 +134,7 @@ func init() {
 	bodyweightsListCmd.Flags().StringVar(&bodyweightsListFormatFlag, "format", "markdown", "Output format: markdown (default) or json")
 	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsSinceFlag, "since", "", "Filter entries on or after date (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
 	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsUntilFlag, "until", "", "Filter entries through date, inclusive (today, yesterday, YYYY-MM-DD, or Nd/Nw/Nm/Ny)")
+	bodyweightsStatsCmd.Flags().StringVar(&bodyweightsStatsFormatFlag, "format", "markdown", "Output format: markdown (default) or json")
 }
 
 func loadBodyweightEntries(sinceFlag, untilFlag string) ([]bodyweightEntry, error) {
@@ -209,6 +241,69 @@ func printBodyweightStats(entries []bodyweightEntry) {
 		barLen := scaledBarLength(month.avg, chartMin, maxWeight, 40)
 		fmt.Printf("  %s  %5s %s\n", month.month, formatWeight(month.avg), strings.Repeat("█", barLen))
 	}
+}
+
+func buildBodyweightStatsJSON(entries []bodyweightEntry) bodyweightStatsJSON {
+	first := entries[0]
+	last := entries[len(entries)-1]
+	minWeight := entries[0].weight
+	maxWeight := entries[0].weight
+	for _, entry := range entries {
+		if entry.weight < minWeight {
+			minWeight = entry.weight
+		}
+		if entry.weight > maxWeight {
+			maxWeight = entry.weight
+		}
+	}
+
+	change := last.weight - first.weight
+	months := last.date.Sub(first.date).Hours() / 24 / 30.44
+
+	stats := bodyweightStatsJSON{
+		Current: last.weight,
+		High:    maxWeight,
+		Low:     minWeight,
+		Change:  change,
+	}
+
+	if months > 0.5 {
+		rate := change / months
+		stats.RatePerMonth = &rate
+	}
+
+	monthAvgs := monthlyBodyweightAverages(entries)
+
+	if len(monthAvgs) >= 3 {
+		tail := monthAvgs
+		if len(tail) > 6 {
+			tail = tail[len(tail)-6:]
+		}
+		mean := 0.0
+		for _, m := range tail {
+			mean += m.avg
+		}
+		mean /= float64(len(tail))
+		variance := 0.0
+		for _, m := range tail {
+			variance += (m.avg - mean) * (m.avg - mean)
+		}
+		stddev := math.Sqrt(variance / float64(len(tail)-1))
+		if stddev < 2.0 {
+			stats.Plateau = &plateauJSON{
+				Since:  monthNameFromKey(tail[0].month),
+				Avg:    mean,
+				Stddev: stddev,
+			}
+		}
+	}
+
+	stats.Months = make([]monthAvgJSON, len(monthAvgs))
+	for i, m := range monthAvgs {
+		stats.Months[i] = monthAvgJSON{Month: m.month, Avg: m.avg}
+	}
+
+	return stats
 }
 
 func monthlyBodyweightAverages(entries []bodyweightEntry) []monthAvg {
