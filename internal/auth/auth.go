@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultAPIBase   = "https://v2-12-3.api.getgymbros.com"
+	defaultAPIBase   = "https://v2-12-5.api.getgymbros.com"
 	refreshProcedure = "user.refreshToken"
 	userAgent        = "Liftoff/528 CFNetwork/3860.400.51 Darwin/25.3.0"
 )
