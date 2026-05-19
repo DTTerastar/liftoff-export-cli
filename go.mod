@@ -2,7 +2,10 @@ module github.com/quantcli/liftoff-export-cli
 
 go 1.25.10
 
-require github.com/spf13/cobra v1.10.2
+require (
+	github.com/quantcli/common/compat v0.0.0-20260519113336-de9219e03369
+	github.com/spf13/cobra v1.10.2
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
